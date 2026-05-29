@@ -1,0 +1,118 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}АкцииПро{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        #sidebar {
+            min-height: 100vh;
+            width: 250px;
+            background-color: #212529;
+        }
+        #sidebar .nav-link {
+            color: #adb5bd;
+            padding: 10px 20px;
+        }
+        #sidebar .nav-link:hover,
+        #sidebar .nav-link.active {
+            color: #ffffff;
+            background-color: #343a40;
+        }
+        #sidebar .nav-link i {
+            margin-right: 8px;
+        }
+        .sidebar-heading {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 20px;
+            border-bottom: 1px solid #343a40;
+        }
+        .main-content {
+            flex: 1;
+            overflow-x: hidden;
+        }
+        .badge-ACTIVE { background-color: #198754; }
+        .badge-SCHEDULED { background-color: #ffc107; color: #000; }
+        .badge-COMPLETED { background-color: #6c757d; }
+        .badge-PAUSED { background-color: #fd7e14; }
+        .badge-DRAFT { background-color: #0dcaf0; color: #000; }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <!-- Боковое меню -->
+    <div id="sidebar">
+        <div class="sidebar-heading">
+            <i class="bi bi-tag-fill"></i> АкцииПро
+        </div>
+        <nav class="nav flex-column mt-2">
+            <a href="{% url 'dashboard' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="bi bi-speedometer2"></i> Дашборд
+            </a>
+            <a href="{% url 'promotion_list' %}"
+               class="nav-link {% if 'promotion' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-percent"></i> Акции
+            </a>
+            <a href="{% url 'product_list' %}"
+               class="nav-link {% if 'product' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-box-seam"></i> Товары
+            </a>
+            <a href="{% url 'calculator' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'calculator' %}active{% endif %}">
+                <i class="bi bi-calculator"></i> Калькулятор
+            </a>
+            <a href="{% url 'analytics' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
+                <i class="bi bi-bar-chart-line"></i> Отчёты
+            </a>
+        </nav>
+    </div>
+
+    <!-- Основной контент -->
+    <div class="main-content">
+        <!-- Верхняя панель -->
+        <nav class="navbar navbar-light bg-light border-bottom px-4">
+            <span class="navbar-text">
+                <i class="bi bi-person-circle me-1"></i>
+                {{ request.user.username }}
+            </span>
+            <a href="/admin/" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-gear"></i> Админка
+            </a>
+        </nav>
+
+        <!-- Сообщения -->
+        <div class="px-4 pt-3">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close"
+                                data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Содержимое страницы -->
+        <div class="p-4">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

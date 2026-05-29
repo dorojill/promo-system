@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}Создать акцию — АкцииПро{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Создать акцию</h2>
+    <a href="{% url 'promotion_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Назад
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form id="createForm">
+            <div class="row g-3">
+                <!-- Название -->
+                <div class="col-md-8">
+                    <label class="form-label">Название акции *</label>
+                    <input type="text" id="name"
+                           class="form-control" required>
+                </div>
+
+                <!-- Статус -->
+                <div class="col-md-4">
+                    <label class="form-label">Статус</label>
+                    <select id="statusField" class="form-select">
+                        <option value="DRAFT">Черновик</option>
+                        <option value="SCHEDULED">Запланирована</option>
+                        <option value="ACTIVE">Активна</option>
+                    </select>
+                </div>
+
+                <!-- Описание -->
+                <div class="col-12">
+                    <label class="form-label">Описание</label>
+                    <textarea id="description"
+                              class="form-control" rows="2"></textarea>
+                </div>
+
+                <!-- Тип механики -->
+                <div class="col-md-4">
+                    <label class="form-label">Тип механики *</label>
+                    <select id="promoType" class="form-select"
+                            onchange="toggleFields()">
+                        <option value="PERCENT">Процентная скидка</option>
+                        <option value="FIXED">Фиксированная скидка</option>
+                        <option value="N_PLUS_1">N+1 (бесплатный товар)</option>
+                        <option value="THRESHOLD">Пороговая скидка</option>
+                        <option value="BUNDLE">Бандл</option>
+                    </select>
+                </div>
+
+                <!-- Размер скидки -->
+                <div class="col-md-4" id="discountBlock">
+                    <label class="form-label">
+                        Размер скидки (% или ₽) *
+                    </label>
+                    <input type="number" id="discountValue"
+                           class="form-control" step="0.01" min="0">
+                </div>
+
+                <!-- Пороговая сумма -->
+                <div class="col-md-4 d-none" id="thresholdBlock">
+                    <label class="form-label">Пороговая сумма (₽)</label>
+                    <input type="number" id="thresholdAmount"
+                           class="form-control" step="0.01" min="0">
+                </div>
+
+                <!-- N и M для N+1 -->
+                <div class="col-md-2 d-none" id="nBlock">
+                    <label class="form-label">Количество N</label>
+                    <input type="number" id="nQuantity"
+                           class="form-control" min="1" value="2">
+                </div>
+                <div class="col-md-2 d-none" id="plusBlock">
+                    <label class="form-label">Бесплатных</label>
+                    <input type="number" id="plusQuantity"
+                           class="form-control" min="1" value="1">
+                </div>
+
+                <!-- Приоритет -->
+                <div class="col-md-4">
+                    <label class="form-label">Приоритет</label>
+                    <input type="number" id="priority"
+                           class="form-control" value="0">
+                </div>
+
+                <!-- Совместимость -->
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check">
+                        <input type="checkbox" id="isCombinable"
+                               class="form-check-input">
+                        <label class="form-check-label">
+                            Совместима с другими акциями
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Даты -->
+                <div class="col-md-6">
+                    <label class="form-label">Дата начала *</label>
+                    <input type="datetime-local" id="startDatetime"
+                           class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Дата окончания *</label>
+                    <input type="datetime-local" id="endDatetime"
+                           class="form-control" required>
+                </div>
+
+                <!-- Выбор товаров -->
+                <div class="col-12">
+                    <label class="form-label">Товары акции</label>
+                    <div class="border rounded p-3"
+                         style="max-height: 200px; overflow-y: auto;">
+                        <div id="productCheckboxes">
+                            Загрузка товаров...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки -->
+                <div class="col-12">
+                    <button type="button" onclick="submitForm()"
+                            class="btn btn-primary me-2">
+                        <i class="bi bi-save"></i> Сохранить
+                    </button>
+                    <a href="{% url 'promotion_list' %}"
+                       class="btn btn-outline-secondary">
+                        Отмена
+                    </a>
+                </div>
+
+                <!-- Сообщение об ошибке -->
+                <div class="col-12">
+                    <div id="errorMsg" class="alert alert-danger d-none"></div>
+                    <div id="successMsg" class="alert alert-success d-none"></div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Загрузка товаров
+    fetch('/api/products/')
+        .then(r => r.json())
+        .then(products => {
+            const container = document.getElementById('productCheckboxes');
+            if (!products.length) {
+                container.innerHTML = '<span class="text-muted">Нет товаров</span>';
+                return;
+            }
+            container.innerHTML = products.map(p => `
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input product-cb"
+                           value="${p.id}" id="prod_${p.id}">
+                    <label class="form-check-label" for="prod_${p.id}">
+                        ${p.sku} — ${p.name}
+                        <span class="text-muted">(${p.base_price} ₽)</span>
+                    </label>
+                </div>
+            `).join('');
+        });
+
+    function toggleFields() {
+        const type = document.getElementById('promoType').value;
+        document.getElementById('discountBlock').classList
+            .toggle('d-none', type === 'N_PLUS_1' || type === 'THRESHOLD');
+        document.getElementById('thresholdBlock').classList
+            .toggle('d-none', type !== 'THRESHOLD');
+        document.getElementById('nBlock').classList
+            .toggle('d-none', type !== 'N_PLUS_1');
+        document.getElementById('plusBlock').classList
+            .toggle('d-none', type !== 'N_PLUS_1');
+    }
+
+    async function submitForm() {
+        const errorEl = document.getElementById('errorMsg');
+        const successEl = document.getElementById('successMsg');
+        errorEl.classList.add('d-none');
+        successEl.classList.add('d-none');
+
+        const type = document.getElementById('promoType').value;
+        const productIds = Array.from(
+            document.querySelectorAll('.product-cb:checked')
+        ).map(cb => parseInt(cb.value));
+
+        const startVal = document.getElementById('startDatetime').value;
+        const endVal = document.getElementById('endDatetime').value;
+
+        if (!document.getElementById('name').value) {
+            errorEl.textContent = 'Введите название акции';
+            errorEl.classList.remove('d-none');
+            return;
+        }
+        if (!startVal || !endVal) {
+            errorEl.textContent = 'Укажите даты начала и окончания';
+            errorEl.classList.remove('d-none');
+            return;
+        }
+
+        const payload = {
+            name: document.getElementById('name').value,
+            description: document.getElementById('description').value,
+            promo_type: type,
+            status: document.getElementById('statusField').value,
+            priority: parseInt(document.getElementById('priority').value) || 0,
+            is_combinable: document.getElementById('isCombinable').checked,
+            start_datetime: new Date(startVal).toISOString(),
+            end_datetime: new Date(endVal).toISOString(),
+            product_ids: productIds,
+            category_ids: [],
+        };
+
+        if (type === 'PERCENT' || type === 'FIXED') {
+            payload.discount_value = parseFloat(
+                document.getElementById('discountValue').value
+            ) || 0;
+        }
+        if (type === 'THRESHOLD') {
+            payload.threshold_amount = parseFloat(
+                document.getElementById('thresholdAmount').value
+            ) || 0;
+        }
+        if (type === 'N_PLUS_1') {
+            payload.n_quantity = parseInt(
+                document.getElementById('nQuantity').value
+            ) || 2;
+            payload.plus_quantity = parseInt(
+                document.getElementById('plusQuantity').value
+            ) || 1;
+        }
+
+        const response = await fetch('/api/promotions/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+            successEl.textContent = 'Акция успешно создана!';
+            successEl.classList.remove('d-none');
+            setTimeout(() => {
+                window.location.href = '/promotions/';
+            }, 1500);
+        } else {
+            const err = await response.json();
+            errorEl.textContent = 'Ошибка: ' + JSON.stringify(err);
+            errorEl.classList.remove('d-none');
+        }
+    }
+</script>
+{% endblock %}

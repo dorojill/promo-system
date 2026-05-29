@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+
+{% block title %}Калькулятор — АкцииПро{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Калькулятор скидок</h2>
+
+<div class="row g-4">
+    <!-- Левая колонка — добавление товара -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Добавить товар</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Артикул товара</label>
+                    <input type="text" id="skuInput"
+                           class="form-control"
+                           placeholder="Введите артикул">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Количество</label>
+                    <input type="number" id="quantityInput"
+                           class="form-control" value="1" min="1">
+                </div>
+                <button onclick="addBySku()"
+                        class="btn btn-primary w-100">
+                    <i class="bi bi-plus-lg"></i> Добавить
+                </button>
+                <div id="skuError" class="text-danger mt-2 d-none">
+                    Товар не найден
+                </div>
+            </div>
+        </div>
+
+        <!-- Итоги -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Итого</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Без скидок:</span>
+                    <span id="totalOriginal">0.00 ₽</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Скидка:</span>
+                    <span id="totalDiscount" class="text-danger">0.00 ₽</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between fw-bold fs-5">
+                    <span>К оплате:</span>
+                    <span id="totalFinal" class="text-success">0.00 ₽</span>
+                </div>
+                <button onclick="clearCart()"
+                        class="btn btn-outline-secondary w-100 mt-3">
+                    <i class="bi bi-trash"></i> Очистить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Правая колонка — таблица корзины -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Корзина</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Артикул</th>
+                            <th>Наименование</th>
+                            <th class="text-center">Кол-во</th>
+                            <th class="text-end">Цена</th>
+                            <th class="text-end">Со скидкой</th>
+                            <th class="text-end">Сумма</th>
+                            <th>Акция</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartTbody">
+                        <tr>
+                            <td colspan="8"
+                                class="text-center text-muted py-4">
+                                Корзина пуста
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let cartItems = [];
+
+    // Получить список товаров для поиска по артикулу
+    let productsCache = [];
+    fetch('/api/products/')
+        .then(r => r.json())
+        .then(data => { productsCache = data; });
+
+    function addBySku() {
+        const sku = document.getElementById('skuInput').value.trim();
+        const quantity = parseInt(
+            document.getElementById('quantityInput').value
+        );
+        const errorEl = document.getElementById('skuError');
+
+        if (!sku) return;
+
+        const product = productsCache.find(p => p.sku === sku);
+        if (!product) {
+            errorEl.classList.remove('d-none');
+            return;
+        }
+        errorEl.classList.add('d-none');
+
+        const existing = cartItems.find(
+            i => i.product_id === product.id
+        );
+        if (existing) {
+            existing.quantity += quantity;
+        } else {
+            cartItems.push({ product_id: product.id, quantity });
+        }
+
+        document.getElementById('skuInput').value = '';
+        document.getElementById('quantityInput').value = '1';
+        recalculate();
+    }
+
+    async function recalculate() {
+        if (cartItems.length === 0) {
+            renderEmpty();
+            return;
+        }
+
+        const response = await fetch('/api/calculate/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: cartItems }),
+        });
+
+        const data = await response.json();
+        renderCart(data);
+    }
+
+    function renderCart(data) {
+        const tbody = document.getElementById('cartTbody');
+        tbody.innerHTML = '';
+
+        data.items.forEach(item => {
+            const hasDiscount = parseFloat(item.discount) > 0;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.sku}</td>
+                <td>${item.name}</td>
+                <td class="text-center">${item.quantity}</td>
+                <td class="text-end">${item.original_price} ₽</td>
+                <td class="text-end ${hasDiscount ? 'text-success fw-bold' : ''}">
+                    ${hasDiscount ? item.final_price + ' ₽' : '—'}
+                </td>
+                <td class="text-end fw-bold">${item.line_total} ₽</td>
+                <td>
+                    ${item.promotion
+                        ? `<span class="badge bg-success">${item.promotion}</span>`
+                        : ''}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger"
+                            onclick="removeItem(${item.product_id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('totalOriginal').textContent =
+            data.total_original + ' ₽';
+        document.getElementById('totalDiscount').textContent =
+            '−' + data.total_discount + ' ₽';
+        document.getElementById('totalFinal').textContent =
+            data.total_final + ' ₽';
+    }
+
+    function removeItem(productId) {
+        cartItems = cartItems.filter(i => i.product_id !== productId);
+        recalculate();
+    }
+
+    function clearCart() {
+        cartItems = [];
+        renderEmpty();
+    }
+
+    function renderEmpty() {
+        document.getElementById('cartTbody').innerHTML =
+            '<tr><td colspan="8" class="text-center text-muted py-4">' +
+            'Корзина пуста</td></tr>';
+        document.getElementById('totalOriginal').textContent = '0.00 ₽';
+        document.getElementById('totalDiscount').textContent = '0.00 ₽';
+        document.getElementById('totalFinal').textContent = '0.00 ₽';
+    }
+
+    // Добавление по Enter
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('skuInput')
+            .addEventListener('keypress', e => {
+                if (e.key === 'Enter') addBySku();
+            });
+    });
+</script>
+{% endblock %}

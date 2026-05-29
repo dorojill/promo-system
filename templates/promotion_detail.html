@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ promo.name }} — АкцииПро{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ promo.name }}</h2>
+    <div>
+        {% if promo.status == 'ACTIVE' %}
+        <a href="{% url 'promotion_deactivate' promo.id %}"
+           class="btn btn-warning me-2">
+            <i class="bi bi-pause"></i> Приостановить
+        </a>
+        {% endif %}
+        {% if promo.status == 'PAUSED' or promo.status == 'DRAFT' %}
+        <a href="{% url 'promotion_activate' promo.id %}"
+           class="btn btn-success me-2">
+            <i class="bi bi-play"></i> Активировать
+        </a>
+        {% endif %}
+        <a href="{% url 'promotion_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Основная информация -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Основные параметры</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted" style="width:40%">Статус</td>
+                        <td>
+                            <span class="badge badge-{{ promo.status }}">
+                                {{ promo.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Тип механики</td>
+                        <td>{{ promo.get_promo_type_display }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Размер скидки</td>
+                        <td>
+                            {% if promo.promo_type == 'PERCENT' %}
+                                {{ promo.discount_value }}%
+                            {% elif promo.promo_type == 'FIXED' %}
+                                {{ promo.discount_value }} ₽
+                            {% elif promo.promo_type == 'N_PLUS_1' %}
+                                {{ promo.n_quantity }} + {{ promo.plus_quantity }} бесплатно
+                            {% elif promo.promo_type == 'THRESHOLD' %}
+                                При покупке от {{ promo.threshold_amount }} ₽
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Приоритет</td>
+                        <td>{{ promo.priority }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Совместима</td>
+                        <td>
+                            {% if promo.is_combinable %}
+                                <span class="text-success">Да</span>
+                            {% else %}
+                                <span class="text-danger">Нет</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Начало</td>
+                        <td>{{ promo.start_datetime|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Конец</td>
+                        <td>{{ promo.end_datetime|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Создана</td>
+                        <td>{{ promo.created_at|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Описание -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Описание</h5>
+            </div>
+            <div class="card-body">
+                {% if promo.description %}
+                    <p>{{ promo.description }}</p>
+                {% else %}
+                    <p class="text-muted">Описание не указано</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Товары акции -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Товары акции</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Артикул</th>
+                            <th>Наименование</th>
+                            <th class="text-end">Цена</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in promo.products.all %}
+                        <tr>
+                            <td><code>{{ product.sku }}</code></td>
+                            <td>{{ product.name }}</td>
+                            <td class="text-end">{{ product.base_price }} ₽</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3"
+                                class="text-center text-muted py-3">
+                                Товары не привязаны
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Категории акции -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Категории акции</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Наименование категории</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in promo.categories.all %}
+                        <tr>
+                            <td>{{ category.name }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td class="text-center text-muted py-3">
+                                Категории не привязаны
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика применений -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Статистика применений</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="fs-3 fw-bold text-primary">
+                            {{ promo.applications.count }}
+                        </div>
+                        <div class="text-muted">Всего применений</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fs-3 fw-bold text-success">
+                            {% with total=promo.applications.all %}
+                                {% if total %}
+                                    {{ total.0.discount_amount }} ₽
+                                {% else %}
+                                    0 ₽
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="text-muted">Последняя скидка</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fs-3 fw-bold text-warning">
+                            {{ promo.priority }}
+                        </div>
+                        <div class="text-muted">Приоритет</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

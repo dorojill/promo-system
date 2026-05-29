@@ -1,3 +1,4 @@
+from django.shortcuts import render
 from rest_framework import generics
 from .models import Category, Product
 from .serializers import CategorySerializer, ProductSerializer
@@ -16,3 +17,8 @@ class ProductListView(generics.ListCreateAPIView):
 class ProductDetailView(generics.RetrieveUpdateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+
+
+def product_list_view(request):
+    products = Product.objects.select_related('category').all()
+    return render(request, 'product_list.html', {'products': products})

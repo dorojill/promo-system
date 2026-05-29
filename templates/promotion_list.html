@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Акции — АкцииПро{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Акции</h2>
+    <a href="{% url 'promotion_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Создать акцию
+    </a>
+</div>
+
+<!-- Фильтры -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Статус</label>
+                <select name="status" class="form-select">
+                    <option value="">Все</option>
+                    <option value="ACTIVE" {% if request.GET.status == 'ACTIVE' %}selected{% endif %}>
+                        Активна
+                    </option>
+                    <option value="SCHEDULED" {% if request.GET.status == 'SCHEDULED' %}selected{% endif %}>
+                        Запланирована
+                    </option>
+                    <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>
+                        Завершена
+                    </option>
+                    <option value="DRAFT" {% if request.GET.status == 'DRAFT' %}selected{% endif %}>
+                        Черновик
+                    </option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Тип</label>
+                <select name="promo_type" class="form-select">
+                    <option value="">Все</option>
+                    <option value="PERCENT">Процентная скидка</option>
+                    <option value="FIXED">Фиксированная скидка</option>
+                    <option value="N_PLUS_1">N+1</option>
+                    <option value="THRESHOLD">Пороговая</option>
+                    <option value="BUNDLE">Бандл</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-funnel"></i> Фильтр
+                </button>
+                <a href="{% url 'promotion_list' %}" class="btn btn-outline-secondary">
+                    Сбросить
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Таблица -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Название</th>
+                    <th>Тип</th>
+                    <th>Скидка</th>
+                    <th>Период</th>
+                    <th>Приоритет</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for promo in promotions %}
+                <tr>
+                    <td>{{ promo.name }}</td>
+                    <td>{{ promo.get_promo_type_display }}</td>
+                    <td>
+                        {% if promo.promo_type == 'PERCENT' %}
+                            {{ promo.discount_value }}%
+                        {% elif promo.promo_type == 'FIXED' %}
+                            {{ promo.discount_value }} ₽
+                        {% elif promo.promo_type == 'N_PLUS_1' %}
+                            {{ promo.n_quantity }}+{{ promo.plus_quantity }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ promo.start_datetime|date:"d.m.Y" }} —
+                        {{ promo.end_datetime|date:"d.m.Y" }}
+                    </td>
+                    <td>{{ promo.priority }}</td>
+                    <td>
+                        <span class="badge badge-{{ promo.status }}">
+                            {{ promo.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'promotion_detail' promo.id %}"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        {% if promo.status == 'ACTIVE' %}
+                        <a href="{% url 'promotion_deactivate' promo.id %}"
+                           class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-pause"></i>
+                        </a>
+                        {% endif %}
+                        {% if promo.status == 'PAUSED' or promo.status == 'DRAFT' %}
+                        <a href="{% url 'promotion_activate' promo.id %}"
+                           class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-play"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        Акций не найдено
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
